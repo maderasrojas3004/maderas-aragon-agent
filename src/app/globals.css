@@ -1,0 +1,27 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-navy: #1a1a2e;
+  --color-verde: #27ae60;
+  --color-rojo: #e74c3c;
+  --color-amarillo: #f39c12;
+  --color-verde-light: #eafaf1;
+  --color-rojo-light: #fdedec;
+  --color-amarillo-light: #fef9e7;
+  --color-gris-bg: #f5f6fa;
+}
+
+html {
+  font-size: 15px;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: var(--color-gris-bg);
+  color: var(--color-navy);
+  -webkit-tap-highlight-color: transparent;
+}
+
+input, select, textarea {
+  font-size: 16px; /* evita zoom en iOS */
+}
