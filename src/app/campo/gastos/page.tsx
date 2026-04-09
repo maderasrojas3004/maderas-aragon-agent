@@ -21,7 +21,13 @@ export default function GastosPage() {
   const [motivo, setMotivo] = useState('');
   const [monto, setMonto] = useState('');
   const [tipoContable, setTipoContable] = useState<'activo' | 'pasivo'>('pasivo');
-  const [responsable, setResponsable] = useState('');
+  const [responsable, setResponsable] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('usuario');
+      return u ? JSON.parse(u).nombre : '';
+    }
+    return '';
+  });
   const [mensaje, setMensaje] = useState('');
 
   const fetchGastos = async () => {

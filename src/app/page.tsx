@@ -2,27 +2,56 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase/client';
+
+const PERMISOS: Record<string, string[]> = {
+  bodeguero: ['/campo/bodega'],
+  vendedor: ['/campo/ventas', '/campo/clientes'],
+  contador: ['/campo/gastos', '/campo/panel'],
+  gerente: ['/campo/bodega', '/campo/ventas', '/campo/clientes', '/campo/gastos', '/campo/panel', '/campo/reportes'],
+};
 
 export default function LoginPage() {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleDigit = (digit: string) => {
+  const handleDigit = async (digit: string) => {
     if (pin.length < 4) {
       const newPin = pin + digit;
       setPin(newPin);
       if (newPin.length === 4) {
-        // TODO: validar PIN contra Supabase
-        if (newPin === '1234') {
-          router.push('/campo/bodega');
-        } else {
+        setLoading(true);
+        setError('');
+
+        const { data, error: dbError } = await supabase
+          .from('usuarios')
+          .select('id, nombre, rol')
+          .eq('pin', newPin)
+          .eq('activo', true)
+          .single();
+
+        if (dbError || !data) {
           setError('PIN incorrecto');
+          setLoading(false);
           setTimeout(() => {
             setPin('');
             setError('');
           }, 1500);
+          return;
         }
+
+        // Guardar sesion
+        localStorage.setItem('usuario', JSON.stringify({
+          id: data.id,
+          nombre: data.nombre,
+          rol: data.rol,
+        }));
+
+        // Redirigir a la primera tab permitida
+        const tabs = PERMISOS[data.rol];
+        router.push(tabs[0]);
       }
     }
   };
@@ -37,7 +66,6 @@ export default function LoginPage() {
       <h1 className="text-white text-2xl font-bold mb-2">Maderas Aragon</h1>
       <p className="text-gray-400 mb-8">Ingrese su PIN</p>
 
-      {/* Indicadores de PIN */}
       <div className="flex gap-4 mb-8">
         {[0, 1, 2, 3].map((i) => (
           <div
@@ -54,8 +82,8 @@ export default function LoginPage() {
       </div>
 
       {error && <p className="text-rojo mb-4 font-medium">{error}</p>}
+      {loading && !error && <p className="text-verde mb-4 font-medium">Verificando...</p>}
 
-      {/* Teclado numerico */}
       <div className="grid grid-cols-3 gap-3 w-full max-w-[280px]">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', 'del'].map(
           (key) => {
@@ -75,7 +103,8 @@ export default function LoginPage() {
               <button
                 key={key}
                 onClick={() => handleDigit(key)}
-                className="h-16 rounded-xl bg-gray-800 text-white text-2xl font-medium active:bg-gray-600 transition-colors"
+                disabled={loading}
+                className="h-16 rounded-xl bg-gray-800 text-white text-2xl font-medium active:bg-gray-600 transition-colors disabled:opacity-50"
               >
                 {key}
               </button>

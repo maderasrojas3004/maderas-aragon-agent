@@ -24,7 +24,13 @@ export default function ClientesPage() {
   const [loading, setLoading] = useState(true);
   const [cobrarId, setCobrarId] = useState<string | null>(null);
   const [montoCobro, setMontoCobro] = useState('');
-  const [responsableCobro, setResponsableCobro] = useState('');
+  const [responsableCobro, setResponsableCobro] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('usuario');
+      return u ? JSON.parse(u).nombre : '';
+    }
+    return '';
+  });
   const [mensaje, setMensaje] = useState('');
 
   const fetchClientes = async () => {

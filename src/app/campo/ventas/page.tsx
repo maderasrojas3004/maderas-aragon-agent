@@ -27,7 +27,13 @@ export default function VentasPage() {
   const [productoId, setProductoId] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [pagado, setPagado] = useState(true);
-  const [responsable, setResponsable] = useState('');
+  const [responsable, setResponsable] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('usuario');
+      return u ? JSON.parse(u).nombre : '';
+    }
+    return '';
+  });
   const [mensaje, setMensaje] = useState('');
   const [busquedaProducto, setBusquedaProducto] = useState('');
 

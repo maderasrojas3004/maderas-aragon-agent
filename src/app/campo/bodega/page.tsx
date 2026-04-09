@@ -45,7 +45,13 @@ export default function BodegaPage() {
   const [tipo, setTipo] = useState<'entrada' | 'salida'>('entrada');
   const [productoId, setProductoId] = useState('');
   const [cantidad, setCantidad] = useState('');
-  const [responsable, setResponsable] = useState('');
+  const [responsable, setResponsable] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const u = localStorage.getItem('usuario');
+      return u ? JSON.parse(u).nombre : '';
+    }
+    return '';
+  });
   const [mensaje, setMensaje] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todos');
