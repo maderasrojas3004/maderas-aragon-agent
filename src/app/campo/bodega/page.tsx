@@ -45,6 +45,7 @@ export default function BodegaPage() {
   const [tipo, setTipo] = useState<'entrada' | 'salida'>('entrada');
   const [productoId, setProductoId] = useState('');
   const [cantidad, setCantidad] = useState('');
+  const [responsable, setResponsable] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [busqueda, setBusqueda] = useState('');
   const [filtroCategoria, setFiltroCategoria] = useState('todos');
@@ -110,7 +111,7 @@ export default function BodegaPage() {
   };
 
   const handleRegistrar = async () => {
-    if (!productoId || !cantidad) return;
+    if (!productoId || !cantidad || !responsable.trim()) return;
 
     const producto = productos.find((p) => p.id === productoId);
     if (!producto) return;
@@ -133,7 +134,7 @@ export default function BodegaPage() {
       stock_anterior: stockAnterior,
       stock_nuevo: stockNuevo,
       motivo: tipo === 'entrada' ? 'compra' : 'venta',
-      registrado_por: 'campo',
+      registrado_por: responsable.trim(),
     });
 
     if (movError) {
@@ -312,12 +313,20 @@ export default function BodegaPage() {
           placeholder="Cantidad"
           value={cantidad}
           onChange={(e) => setCantidad(e.target.value)}
+          className="w-full h-12 px-3 rounded-lg border border-gray-200 text-navy mb-3"
+        />
+
+        <input
+          type="text"
+          placeholder="Responsable (quien registra)"
+          value={responsable}
+          onChange={(e) => setResponsable(e.target.value)}
           className="w-full h-12 px-3 rounded-lg border border-gray-200 text-navy mb-4"
         />
 
         <button
           onClick={handleRegistrar}
-          disabled={!productoId || !cantidad}
+          disabled={!productoId || !cantidad || !responsable.trim()}
           className="w-full h-14 rounded-xl bg-navy text-white text-lg font-bold disabled:opacity-40 active:opacity-80 transition-opacity"
         >
           REGISTRAR

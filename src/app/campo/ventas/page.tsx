@@ -27,6 +27,7 @@ export default function VentasPage() {
   const [productoId, setProductoId] = useState('');
   const [cantidad, setCantidad] = useState('');
   const [pagado, setPagado] = useState(true);
+  const [responsable, setResponsable] = useState('');
   const [mensaje, setMensaje] = useState('');
   const [busquedaProducto, setBusquedaProducto] = useState('');
 
@@ -64,7 +65,7 @@ export default function VentasPage() {
   const total = producto && cantidad ? precio * Number(cantidad) : 0;
 
   const handleRegistrar = async () => {
-    if (!clienteId || !productoId || !cantidad || !producto) return;
+    if (!clienteId || !productoId || !cantidad || !producto || !responsable.trim()) return;
 
     const cant = Number(cantidad);
 
@@ -83,7 +84,7 @@ export default function VentasPage() {
       total,
       pagado,
       metodo_pago: pagado ? 'efectivo' : 'credito',
-      registrado_por: 'campo',
+      registrado_por: responsable.trim(),
     });
 
     if (ventaError) {
@@ -92,11 +93,23 @@ export default function VentasPage() {
       return;
     }
 
-    // Descontar stock
+    // Descontar stock automaticamente
+    const nuevoStock = producto.stock_actual - cant;
     await supabase
       .from('productos')
-      .update({ stock_actual: producto.stock_actual - cant })
+      .update({ stock_actual: nuevoStock })
       .eq('id', productoId);
+
+    // Registrar movimiento de salida en inventario
+    await supabase.from('movimientos_inventario').insert({
+      producto_id: productoId,
+      tipo: 'salida',
+      cantidad: cant,
+      stock_anterior: producto.stock_actual,
+      stock_nuevo: nuevoStock,
+      motivo: 'venta',
+      registrado_por: responsable.trim(),
+    });
 
     // Si es credito, actualizar saldo del cliente
     if (!pagado) {
@@ -185,6 +198,15 @@ export default function VentasPage() {
           placeholder="Cantidad"
           value={cantidad}
           onChange={(e) => setCantidad(e.target.value)}
+          className="w-full h-12 px-3 rounded-lg border border-gray-200 text-navy mb-3"
+        />
+
+        {/* Responsable */}
+        <input
+          type="text"
+          placeholder="Responsable (quien registra)"
+          value={responsable}
+          onChange={(e) => setResponsable(e.target.value)}
           className="w-full h-12 px-3 rounded-lg border border-gray-200 text-navy mb-4"
         />
 
@@ -218,7 +240,7 @@ export default function VentasPage() {
 
         <button
           onClick={handleRegistrar}
-          disabled={!clienteId || !productoId || !cantidad}
+          disabled={!clienteId || !productoId || !cantidad || !responsable.trim()}
           className="w-full h-14 rounded-xl bg-navy text-white text-lg font-bold disabled:opacity-40 active:opacity-80 transition-opacity"
         >
           REGISTRAR VENTA
