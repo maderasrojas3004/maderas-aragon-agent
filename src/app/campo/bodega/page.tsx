@@ -67,6 +67,10 @@ export default function BodegaPage() {
       setLoading(false);
     }
     fetchProductos();
+
+    // Auto-refrescar cada 30 segundos
+    const interval = setInterval(fetchProductos, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   // Productos filtrados para el grid
@@ -164,7 +168,15 @@ export default function BodegaPage() {
     <div>
       <div className="flex items-center justify-between mb-3">
         <h1 className="text-xl font-bold text-navy">Bodega</h1>
-        <span className="text-sm text-gray-500">{productos.length} productos</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={reloadProductos}
+            className="px-3 py-1 rounded-lg bg-white border border-gray-200 text-sm text-gray-600 active:bg-gray-100"
+          >
+            Refrescar
+          </button>
+          <span className="text-sm text-gray-500">{productos.length} productos</span>
+        </div>
       </div>
 
       {/* Filtros */}
