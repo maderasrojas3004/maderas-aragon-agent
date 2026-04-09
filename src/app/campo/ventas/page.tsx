@@ -31,25 +31,23 @@ export default function VentasPage() {
   const [mensaje, setMensaje] = useState('');
   const [busquedaProducto, setBusquedaProducto] = useState('');
 
+  // Nuevo cliente
+  const [mostrarNuevoCliente, setMostrarNuevoCliente] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState('');
+  const [nuevoTelefono, setNuevoTelefono] = useState('');
+  const [creandoCliente, setCreandoCliente] = useState(false);
+
+  const reloadData = async () => {
+    const [{ data: prods }, { data: clis }] = await Promise.all([
+      supabase.from('productos').select('id, codigo, nombre, categoria, precio_2025, stock_actual').eq('activo', true).order('nombre'),
+      supabase.from('clientes').select('id, nombre, saldo_pendiente').eq('activo', true).order('nombre'),
+    ]);
+    if (prods) setProductos(prods);
+    if (clis) setClientes(clis);
+  };
+
   useEffect(() => {
-    async function fetchData() {
-      const [{ data: prods }, { data: clis }] = await Promise.all([
-        supabase
-          .from('productos')
-          .select('id, codigo, nombre, categoria, precio_2025, stock_actual')
-          .eq('activo', true)
-          .order('nombre'),
-        supabase
-          .from('clientes')
-          .select('id, nombre, saldo_pendiente')
-          .eq('activo', true)
-          .order('nombre'),
-      ]);
-      if (prods) setProductos(prods);
-      if (clis) setClientes(clis);
-      setLoading(false);
-    }
-    fetchData();
+    reloadData().then(() => setLoading(false));
   }, []);
 
   const productosFiltrados = useMemo(() => {
@@ -64,6 +62,37 @@ export default function VentasPage() {
   const precio = producto?.precio_2025 || 0;
   const total = producto && cantidad ? precio * Number(cantidad) : 0;
 
+  const handleCrearCliente = async () => {
+    if (!nuevoNombre.trim()) return;
+    setCreandoCliente(true);
+
+    const { data, error } = await supabase
+      .from('clientes')
+      .insert({
+        nombre: nuevoNombre.trim(),
+        telefono: nuevoTelefono.trim() || null,
+        tipo: 'regular',
+        saldo_pendiente: 0,
+        dias_mora: 0,
+      })
+      .select('id')
+      .single();
+
+    if (!error && data) {
+      await reloadData();
+      setClienteId(data.id);
+      setMostrarNuevoCliente(false);
+      setNuevoNombre('');
+      setNuevoTelefono('');
+      setMensaje(`Cliente "${nuevoNombre.trim()}" creado`);
+      setTimeout(() => setMensaje(''), 3000);
+    } else {
+      setMensaje('Error al crear cliente');
+      setTimeout(() => setMensaje(''), 3000);
+    }
+    setCreandoCliente(false);
+  };
+
   const handleRegistrar = async () => {
     if (!clienteId || !productoId || !cantidad || !producto || !responsable.trim()) return;
 
@@ -75,7 +104,6 @@ export default function VentasPage() {
       return;
     }
 
-    // Registrar venta
     const { error: ventaError } = await supabase.from('ventas').insert({
       cliente_id: clienteId,
       producto_id: productoId,
@@ -93,14 +121,9 @@ export default function VentasPage() {
       return;
     }
 
-    // Descontar stock automaticamente
     const nuevoStock = producto.stock_actual - cant;
-    await supabase
-      .from('productos')
-      .update({ stock_actual: nuevoStock })
-      .eq('id', productoId);
+    await supabase.from('productos').update({ stock_actual: nuevoStock }).eq('id', productoId);
 
-    // Registrar movimiento de salida en inventario
     await supabase.from('movimientos_inventario').insert({
       producto_id: productoId,
       tipo: 'salida',
@@ -111,34 +134,20 @@ export default function VentasPage() {
       registrado_por: responsable.trim(),
     });
 
-    // Si es credito, actualizar saldo del cliente
     if (!pagado) {
       const cliente = clientes.find((c) => c.id === clienteId);
       if (cliente) {
-        await supabase
-          .from('clientes')
-          .update({ saldo_pendiente: cliente.saldo_pendiente + total })
-          .eq('id', clienteId);
+        await supabase.from('clientes').update({ saldo_pendiente: cliente.saldo_pendiente + total }).eq('id', clienteId);
       }
     }
 
     const cliente = clientes.find((c) => c.id === clienteId);
-    setMensaje(
-      `Venta registrada: ${cant} ${producto.nombre} a ${cliente?.nombre} por ${formatCOP(total)}`
-    );
+    setMensaje(`Venta registrada: ${cant} ${producto.nombre} a ${cliente?.nombre} por ${formatCOP(total)}`);
     setClienteId('');
     setProductoId('');
     setCantidad('');
     setBusquedaProducto('');
-
-    // Recargar datos
-    const [{ data: prods }, { data: clis }] = await Promise.all([
-      supabase.from('productos').select('id, codigo, nombre, categoria, precio_2025, stock_actual').eq('activo', true).order('nombre'),
-      supabase.from('clientes').select('id, nombre, saldo_pendiente').eq('activo', true).order('nombre'),
-    ]);
-    if (prods) setProductos(prods);
-    if (clis) setClientes(clis);
-
+    await reloadData();
     setTimeout(() => setMensaje(''), 4000);
   };
 
@@ -152,18 +161,56 @@ export default function VentasPage() {
 
       <div className="bg-white rounded-xl p-4 shadow-sm">
         {/* Cliente */}
-        <select
-          value={clienteId}
-          onChange={(e) => setClienteId(e.target.value)}
-          className="w-full h-12 px-3 rounded-lg border border-gray-200 bg-white text-navy mb-3"
-        >
-          <option value="">Seleccionar cliente</option>
-          {clientes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.nombre} {c.saldo_pendiente > 0 ? `(debe ${formatCOP(c.saldo_pendiente)})` : ''}
-            </option>
-          ))}
-        </select>
+        <div className="flex gap-2 mb-3">
+          <select
+            value={clienteId}
+            onChange={(e) => setClienteId(e.target.value)}
+            className="flex-1 h-12 px-3 rounded-lg border border-gray-200 bg-white text-navy"
+          >
+            <option value="">Seleccionar cliente</option>
+            {clientes.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nombre} {c.saldo_pendiente > 0 ? `(debe ${formatCOP(c.saldo_pendiente)})` : ''}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setMostrarNuevoCliente(!mostrarNuevoCliente)}
+            className={`h-12 px-4 rounded-lg font-bold text-sm transition-colors ${
+              mostrarNuevoCliente ? 'bg-gray-200 text-gray-600' : 'bg-verde text-white'
+            }`}
+          >
+            {mostrarNuevoCliente ? 'X' : '+ Nuevo'}
+          </button>
+        </div>
+
+        {/* Formulario nuevo cliente */}
+        {mostrarNuevoCliente && (
+          <div className="mb-3 p-3 rounded-lg bg-verde-light border border-verde/20">
+            <p className="text-sm font-bold text-navy mb-2">Nuevo cliente</p>
+            <input
+              type="text"
+              placeholder="Nombre del cliente *"
+              value={nuevoNombre}
+              onChange={(e) => setNuevoNombre(e.target.value)}
+              className="w-full h-10 px-3 rounded-lg border border-gray-200 text-navy mb-2 text-sm"
+            />
+            <input
+              type="tel"
+              placeholder="Telefono (opcional)"
+              value={nuevoTelefono}
+              onChange={(e) => setNuevoTelefono(e.target.value)}
+              className="w-full h-10 px-3 rounded-lg border border-gray-200 text-navy mb-2 text-sm"
+            />
+            <button
+              onClick={handleCrearCliente}
+              disabled={!nuevoNombre.trim() || creandoCliente}
+              className="w-full h-10 rounded-lg bg-verde text-white font-bold text-sm disabled:opacity-40"
+            >
+              {creandoCliente ? 'Creando...' : 'CREAR CLIENTE'}
+            </button>
+          </div>
+        )}
 
         {/* Busqueda producto */}
         <input
@@ -174,13 +221,9 @@ export default function VentasPage() {
           className="w-full h-12 px-3 rounded-lg border border-gray-200 text-navy mb-2"
         />
 
-        {/* Producto */}
         <select
           value={productoId}
-          onChange={(e) => {
-            setProductoId(e.target.value);
-            setBusquedaProducto('');
-          }}
+          onChange={(e) => { setProductoId(e.target.value); setBusquedaProducto(''); }}
           className="w-full h-12 px-3 rounded-lg border border-gray-200 bg-white text-navy mb-3"
         >
           <option value="">Seleccionar producto ({productosFiltrados.length})</option>
@@ -191,7 +234,6 @@ export default function VentasPage() {
           ))}
         </select>
 
-        {/* Cantidad */}
         <input
           type="number"
           inputMode="numeric"
@@ -201,7 +243,6 @@ export default function VentasPage() {
           className="w-full h-12 px-3 rounded-lg border border-gray-200 text-navy mb-3"
         />
 
-        {/* Responsable */}
         <input
           type="text"
           placeholder="Responsable (quien registra)"
@@ -210,7 +251,6 @@ export default function VentasPage() {
           className="w-full h-12 px-3 rounded-lg border border-gray-200 text-navy mb-4"
         />
 
-        {/* Total en tiempo real */}
         {total > 0 && (
           <div className="text-center mb-4">
             <span className="text-sm text-gray-500">Total:</span>
@@ -218,24 +258,9 @@ export default function VentasPage() {
           </div>
         )}
 
-        {/* Toggle pagado/credito */}
         <div className="flex gap-2 mb-4">
-          <button
-            onClick={() => setPagado(true)}
-            className={`flex-1 py-3 rounded-lg text-base font-bold transition-colors ${
-              pagado ? 'bg-verde text-white' : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            PAGADO
-          </button>
-          <button
-            onClick={() => setPagado(false)}
-            className={`flex-1 py-3 rounded-lg text-base font-bold transition-colors ${
-              !pagado ? 'bg-amarillo text-white' : 'bg-gray-100 text-gray-500'
-            }`}
-          >
-            CREDITO
-          </button>
+          <button onClick={() => setPagado(true)} className={`flex-1 py-3 rounded-lg text-base font-bold transition-colors ${pagado ? 'bg-verde text-white' : 'bg-gray-100 text-gray-500'}`}>PAGADO</button>
+          <button onClick={() => setPagado(false)} className={`flex-1 py-3 rounded-lg text-base font-bold transition-colors ${!pagado ? 'bg-amarillo text-white' : 'bg-gray-100 text-gray-500'}`}>CREDITO</button>
         </div>
 
         <button
@@ -248,9 +273,7 @@ export default function VentasPage() {
 
         {mensaje && (
           <div className={`mt-3 p-3 rounded-lg text-sm font-medium ${
-            mensaje.includes('Error') || mensaje.includes('insuficiente')
-              ? 'bg-rojo-light text-rojo'
-              : 'bg-verde-light text-verde'
+            mensaje.includes('Error') || mensaje.includes('insuficiente') ? 'bg-rojo-light text-rojo' : 'bg-verde-light text-verde'
           }`}>
             {mensaje}
           </div>

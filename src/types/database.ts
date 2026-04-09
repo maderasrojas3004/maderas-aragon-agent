@@ -84,8 +84,19 @@ export interface AiLogRow {
   created_at: string;
 }
 
+export interface GastoRow {
+  id: string;
+  descripcion: string;
+  motivo: string | null;
+  monto: number;
+  tipo_contable: 'activo' | 'pasivo';
+  registrado_por: string;
+  created_at: string;
+}
+
 // Insert types (sin id ni created_at)
 export type ProductoInsert = Omit<ProductoRow, 'id' | 'created_at'>;
 export type VentaInsert = Omit<VentaRow, 'id' | 'created_at' | 'ai_procesado' | 'ai_alertas'>;
 export type ClienteInsert = Omit<ClienteRow, 'id' | 'created_at' | 'score'>;
 export type CobroInsert = Omit<CobroRow, 'id' | 'created_at'>;
+export type GastoInsert = Omit<GastoRow, 'id' | 'created_at'>;

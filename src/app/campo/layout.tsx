@@ -7,6 +7,8 @@ const tabs = [
   { href: '/campo/bodega', label: 'Bodega', icon: 'box' },
   { href: '/campo/ventas', label: 'Ventas', icon: 'dollar' },
   { href: '/campo/clientes', label: 'Clientes', icon: 'users' },
+  { href: '/campo/gastos', label: 'Gastos', icon: 'receipt' },
+  { href: '/campo/panel', label: 'Panel', icon: 'dashboard' },
   { href: '/campo/reportes', label: 'Reportes', icon: 'chart' },
 ] as const;
 
@@ -47,6 +49,24 @@ function TabIcon({ icon, active }: { icon: string; active: boolean }) {
           <line x1="6" y1="20" x2="6" y2="14" />
         </svg>
       );
+    case 'receipt':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z" />
+          <path d="M8 7h8" />
+          <path d="M8 11h8" />
+          <path d="M8 15h5" />
+        </svg>
+      );
+    case 'dashboard':
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="7" height="9" rx="1" />
+          <rect x="14" y="3" width="7" height="5" rx="1" />
+          <rect x="14" y="12" width="7" height="9" rx="1" />
+          <rect x="3" y="16" width="7" height="5" rx="1" />
+        </svg>
+      );
     default:
       return null;
   }
@@ -65,7 +85,7 @@ export default function CampoLayout({
       <main className="px-4 pt-4">{children}</main>
 
       {/* Tab bar */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 safe-area-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-1 py-1.5 safe-area-bottom">
         <div className="flex justify-around max-w-lg mx-auto">
           {tabs.map((tab) => {
             const active = pathname.startsWith(tab.href);
